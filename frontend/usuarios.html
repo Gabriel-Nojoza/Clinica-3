@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usuário - Clinica</title>
+    <link rel="stylesheet" href="css/usuario.css">
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;">
+
+
+</head>
+
+<body>
+
+    <div class="principal">
+
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-wrapper">
+                    <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                </div>
+                <div>
+                    <h2>Clínica</h2>
+                    <p class="subtitle">Sistema de Gestão</p>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="menu.html" class="nav-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke-width="2" />
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+
+                <a href="usuarios.html" class="nav-item active">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke-width="2" />
+                        <circle cx="9" cy="7" r="4" stroke-width="2" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke-width="2" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke-width="2" />
+                    </svg>
+                    <span>Usuários</span>
+                </a>
+
+                <a href="pacientes.html" class="nav-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke-width="2" />
+                        <circle cx="12" cy="7" r="4" stroke-width="2" />
+                    </svg>
+                    <span>Pacientes</span>
+                </a>
+
+                <a href="medicos.html" class="nav-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke-width="2" />
+                        <circle cx="9" cy="7" r="4" stroke-width="2" />
+                        <path d="M22 21v-2a4 4 0 0 0-3-3.87" stroke-width="2" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke-width="2" />
+                    </svg>
+                    <span>Médicos</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke-width="2" />
+                            <circle cx="12" cy="7" r="4" stroke-width="2" />
+                        </svg>
+                    </div>
+                    <div class="user-details">
+                        <span id="currentUser" class="user-name"></span>
+                        <span class="user-role"></span>
+                    </div>
+                </div>
+                <button id="logoutBtn" class="btn-logout">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke-width="2" />
+                        <polyline points="16 17 21 12 16 7" stroke-width="2" />
+                        <line x1="21" y1="12" x2="9" y2="12" stroke-width="2" />
+                    </svg>
+                </button>
+            </div>
+        </aside>
+
+        <!-- CONTEÚDO PRINCIPAL (fora do sidebar) -->
+        <main class="content">
+            <div class="page-header">
+                <div class="page-header-left">
+                    <h1>Gerenciar Usuários</h1>
+                    <p>Visão geral do sistema</p>
+                </div>
+                <div class="page-header-right">
+                    <button id="btnNovo" class="btn-novo">+ Novo Usuário</button>
+                </div>
+            </div>
+
+            <div id="modalNovoUsuario" class="modal">
+                <div class="modal-content">
+                    <span class="close" id="fecharModal">&times;</span>
+                    <h2>Cadastrar Novo Usuário</h2>
+
+                    <form id="formNovoUsuario">
+                        <label for="novoNome">Nome:</label>
+                        <input type="text" id="novoNome" placeholder="Digite o nome completo" required>
+
+                        <label for="novoEmail">E-mail:</label>
+                        <input type="email" id="novoEmail" placeholder="exemplo@clinica.com" required>
+
+                        <label for="novoSenha">Senha:</label>
+                        <input type="password" id="novoSenha" placeholder="Digite uma senha" required>
+
+                        <button type="submit" class="btn-salvar">Salvar</button>
+                    </form>
+
+                </div>
+            </div>
+
+            <!-- MODAL DE EDIÇÃO DE USUÁRIO -->
+            <div id="modalEditarUsuario" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>Editar Usuário</h2>
+                        <span class="close" id="fecharModalEditar">&times;</span>
+                    </div>
+
+                    <form id="formEditarUsuario" class="form-editar">
+                        <input type="hidden" id="editarId">
+
+                        <label for="editarNome">Nome Completo</label>
+                        <input type="text" id="editarNome" placeholder="Digite o nome completo" required>
+
+                        <label for="editarUsuario">Usuário</label>
+                        <input type="text" id="editarUsuario" placeholder="Digite o nome de usuário" required>
+
+                        <label for="editarEmail">E-mail</label>
+                        <input type="email" id="editarEmail" placeholder="Digite o e-mail" required>
+
+                        <label for="editarSenha">Senha</label>
+                        <input type="password" id="editarSenha" placeholder="Deixe em branco para manter a senha atual">
+
+                        <label for="editarTipo">Tipo de Usuário</label>
+                        <select id="editarTipo">
+                            <option value="Administrador">Administrador</option>
+                            <option value="Usuário">Usuário</option>
+                            <option value="Médico">Médico</option>
+                            <option value="Recepcionista">Recepcionista</option>
+                        </select>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn-cancelar" id="cancelarEditar">Cancelar</button>
+                            <button type="submit" class="btn-salvar">Salvar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+
+            <section class="usuario-section">
+                <div class="usuario-header">
+                    <h2>Lista de Usuários</h2>
+                </div>
+
+                <input type="text" id="busca" placeholder="Buscar usuário..." />
+
+                <table id="tabelaUsuarios">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>E-mail</th>
+                            <th>Data de Criação</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </section>
+        </main>
+    </div>
+
+    <!-- SDK do Supabase (oficial) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script src="js/usuario.js"></script>
+</body>
+
+</html>
