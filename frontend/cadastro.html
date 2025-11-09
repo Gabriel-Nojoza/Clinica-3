@@ -1,45 +1,55 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema - Cadastro</title>
-    <link rel="stylesheet" href="css/cadastro.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema - Cadastro</title>
+  <link rel="stylesheet" href="css/cadastro.css">
 </head>
 <body>
-    <header>
-        
-    </header>
+  <div class="container">
+    <div class="login-box">
+      <h2>Cadastro</h2>
 
-    <div class="container">
-        <div class="login-box">
-            <h2>Cadastro</h2>
-
-            <form class="form-cadastro">
-                <div class="input-box">
-                    <label for="nome">Usuario</label>
-                    <input type="text" id="nome" placeholder="Nome" required>
-                </div>
-
-                <div class="input-box">
-                    <label for="email">E-mail</label>
-                    <input type="email" id="email" placeholder="E-mail" required>
-                </div>
-
-                <div class="input-box">
-                    <label for="senha">Senha</label>
-                    <input type="password" id="senha" placeholder="Senha" required>
-                </div>
-
-                <button type="submit" class="btn-cadastro">Cadastrar</button>
-
-                <p class="login-text">Já tem conta? <a href="login.html">Faça login</a></p>
-            </form>
+      <!-- 🔹 Removido o onsubmit="cadastro()" -->
+      <form class="form-cadastro">
+        <div class="input-box">
+          <label for="nome">Usuário</label>
+          <input type="text" id="nome" placeholder="Nome" required>
         </div>
-    </div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/cadastro.js"></script>
 
+        <div class="input-box">
+          <label for="email">E-mail</label>
+          <input type="email" id="email" placeholder="E-mail" required>
+        </div>
+
+        <div class="input-box">
+          <label for="senha">Senha</label>
+          <input type="password" id="senha" placeholder="Senha" required>
+        </div>
+
+        <!-- 🔹 Campo de tipo (necessário para passar na constraint do banco) -->
+        <div class="input-box">
+          <label for="tipo">Tipo</label>
+          <select id="tipo" required>
+            <option value="cliente" selected>Cliente</option>
+            <option value="admin">Admin</option>
+            <option value="barbeiro">Barbeiro</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn-cadastro">Cadastrar</button>
+
+        <p class="login-text">
+          Já tem conta? <a href="login.html">Faça login</a>
+        </p>
+      </form>
+    </div>
+  </div>
+
+  <!-- SDK Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Script de cadastro -->
+  <script src="js/cadastro.js"></script>
 </body>
 </html>
