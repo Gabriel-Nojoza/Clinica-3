@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Redirecionando...</title>
+    <style>
+      body {
+        background-color: #f4f4f4;
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        color: #333;
+      }
+      .loader {
+        border: 6px solid #ccc;
+        border-top: 6px solid #007bff;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      p {
+        margin-top: 15px;
+      }
+    </style>
+
+    <!-- Redireciona automaticamente -->
+    <meta http-equiv="refresh" content="1; url=login.html">
+  </head>
+  <body>
+    <div class="loader"></div>
+    <p>Carregando sistema...</p>
+  </body>
+</html>
