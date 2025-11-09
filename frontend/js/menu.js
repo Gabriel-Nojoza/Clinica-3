@@ -1,42 +1,53 @@
 // ==========================================
-// MENU.JS — Proteção, Logout e Navegação
+// MENU.JS — Proteção, Logout e Navegação (Supabase)
 // ==========================================
 
-// 🔒 Verifica se o usuário está logado
-function verificarLogin() {
-  const token = localStorage.getItem("token");
-  const nome = localStorage.getItem("usuarioNome");
-  const tipo = localStorage.getItem("usuarioTipo");
+// ==== CONFIGURAÇÃO SUPABASE ====
+const SUPABASE_URL = "https://vdvzipjygqeamnuihsiu.supabase.co";
+const SUPABASE_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkdnppcGp5Z3FlYW1udWloc2l1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0MjY1MTYsImV4cCI6MjA3ODAwMjUxNn0.8Hhyuwj62L43w0MSv6JMVVxFEBWUCAOlF06h5oXKWAs";
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true },
+});
 
-  if (!token) {
-    console.warn("⚠️ Nenhum token encontrado. Redirecionando para login...");
+// ==========================================
+// 🔒 VERIFICA LOGIN PELO SUPABASE
+// ==========================================
+async function verificarLogin() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    console.warn("⚠️ Usuário não autenticado. Redirecionando...");
     window.location.href = "login.html";
     return false;
   }
 
-  // Atualiza informações do usuário no sidebar
+  // Atualiza nome do usuário na sidebar
   const nomeEl = document.getElementById("currentUser");
   const tipoEl = document.querySelector(".user-role");
-  if (nomeEl) nomeEl.textContent = nome || "Usuário";
-  if (tipoEl) tipoEl.textContent = tipo || "Usuário";
+  if (nomeEl) nomeEl.textContent = user.email || "Usuário";
+  if (tipoEl) tipoEl.textContent = "Autenticado";
 
-  console.log("✅ Usuário logado:", nome);
+  console.log("✅ Usuário autenticado:", user.email);
   return true;
 }
 
 // ==========================================
-// 🚪 LOGOUT (sair do sistema)
+// 🚪 LOGOUT COM SUPABASE
 // ==========================================
 function inicializarLogout() {
   const btnLogout = document.getElementById("logoutBtn");
   if (!btnLogout) return;
 
-  btnLogout.addEventListener("click", () => {
+  btnLogout.addEventListener("click", async () => {
     const confirmar = confirm("Deseja realmente sair do sistema?");
-    if (confirmar) {
-      localStorage.clear();
-      window.location.href = "login.html";
-    }
+    if (!confirmar) return;
+
+    await supabase.auth.signOut();
+    localStorage.clear();
+    window.location.href = "login.html";
   });
 }
 
@@ -46,42 +57,36 @@ function inicializarLogout() {
 function inicializarNavegacao() {
   const navItems = document.querySelectorAll(".nav-item");
 
-  // Clique em item do menu
-  navItems.forEach(item => {
+  navItems.forEach((item) => {
     item.addEventListener("click", (e) => {
       e.preventDefault();
-
       const destino = item.getAttribute("href");
-      if (!destino || destino === "#") return;
-
-      // Remove active de todos
-      navItems.forEach(el => el.classList.remove("active"));
-
-      // Marca o item clicado
+      if (!destino) return;
+      navItems.forEach((el) => el.classList.remove("active"));
       item.classList.add("active");
-
-      // Redireciona
       window.location.href = destino;
     });
   });
 
-  // 🔹 Marcar automaticamente o item da página atual
+  // Marcar item atual automaticamente
   const atual = window.location.pathname.split("/").pop();
-  navItems.forEach(link => {
-    const href = link.getAttribute("href");
-    if (href && atual === href) {
-      navItems.forEach(el => el.classList.remove("active"));
+  navItems.forEach((link) => {
+    if (link.getAttribute("href") === atual) {
       link.classList.add("active");
     }
   });
 }
 
 // ==========================================
-// 🚀 Inicialização principal
+// 🚀 INICIALIZAÇÃO PRINCIPAL
 // ==========================================
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
   console.log("📂 menu.js carregado...");
-  if (verificarLogin()) {
+
+  // Aguarda verificação Supabase
+  const autenticado = await verificarLogin();
+
+  if (autenticado) {
     inicializarLogout();
     inicializarNavegacao();
   }
