@@ -1,80 +1,92 @@
 // ============================================================
-// 🔧 CONFIGURAÇÃO DO SUPABASE
+// 🧠 Reutiliza o cliente Supabase global criado em script.js
 // ============================================================
-const SUPABASE_URL = "https://vdvzipjygqeamnuihsiu.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkdnppcGp5Z3FlYW1udWloc2l1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0MjY1MTYsImV4cCI6MjA3ODAwMjUxNn0.8Hhyuwj62L43w0MSv6JMVVxFEBWUCAOlF06h5oXKWAs";
-
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: { persistSession: true, autoRefreshToken: true },
-});
+const supabaseUsuarios = supabase;
 
 // ============================================================
-// 🧠 AUTENTICAÇÃO E INICIALIZAÇÃO
+// 🔐 Verificar login do usuário
 // ============================================================
 async function verificarLogin() {
-  const { data } = await supabase.auth.getSession();
-  if (!data.session) {
+  const { data, error } = await supabaseUsuarios.auth.getSession();
+  if (error || !data.session) {
     window.location.href = "login.html";
     return;
   }
 
-  // Exibe o nome ou email do usuário logado
-  const usuarioNome = localStorage.getItem("usuarioNome");
-  const usuarioEmail = localStorage.getItem("usuarioEmail");
-  document.getElementById("currentUser").textContent =
-    usuarioNome || usuarioEmail || "Usuário Logado";
+  const nome = localStorage.getItem("usuarioNome");
+  const email = localStorage.getItem("usuarioEmail");
+  const span = document.getElementById("currentUser");
+
+  if (span) span.textContent = nome || email || data.session.user.email;
 }
 
 // ============================================================
-// 📋 LISTAR USUÁRIOS
+// 📋 Carregar todos os usuários da tabela 'usuarios'
 // ============================================================
 async function carregarUsuarios() {
-  const tabela = document.querySelector("#tabelaUsuarios tbody");
-  tabela.innerHTML = "<tr><td colspan='5'>Carregando...</td></tr>";
+  const tbody = document.querySelector("#tabelaUsuarios tbody");
+  if (!tbody) return;
 
-  const { data, error } = await supabase
+  tbody.innerHTML = "<tr><td colspan='5'>Carregando usuários...</td></tr>";
+
+  const { data, error } = await supabaseUsuarios
     .from("usuarios")
     .select("*")
     .order("criado_em", { ascending: false });
 
   if (error) {
     console.error("Erro ao carregar usuários:", error);
-    tabela.innerHTML = "<tr><td colspan='5'>Erro ao carregar usuários.</td></tr>";
+    tbody.innerHTML =
+      "<tr><td colspan='5'>❌ Erro ao carregar usuários.</td></tr>";
     return;
   }
 
-  tabela.innerHTML = "";
+  tbody.innerHTML = "";
 
   data.forEach((u) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${u.id}</td>
-      <td>${u.nome}</td>
-      <td>${u.email}</td>
-      <td>${new Date(u.criado_em).toLocaleString("pt-BR")}</td>
+      <td>${u.nome || "-"}</td>
+      <td>${u.email || "-"}</td>
+      <td>${u.criado_em ? new Date(u.criado_em).toLocaleString("pt-BR") : "-"}</td>
       <td>
         <button class="btn-editar" data-id="${u.id}">✏️</button>
         <button class="btn-excluir" data-id="${u.id}">🗑️</button>
       </td>
     `;
-    tabela.appendChild(tr);
+    tbody.appendChild(tr);
   });
 }
 
 // ============================================================
-// ➕ NOVO USUÁRIO
+// ➕ Novo usuário (Auth + tabela 'usuarios')
 // ============================================================
-document.getElementById("btnNovo").addEventListener("click", () => {
-  document.getElementById("modalNovoUsuario").style.display = "block";
-});
+function configurarNovoUsuario() {
+  const btnNovo = document.getElementById("btnNovo");
+  const modal = document.getElementById("modalNovoUsuario");
+  const fechar = document.getElementById("fecharModal");
+  const form = document.getElementById("formNovoUsuario");
 
-document.getElementById("fecharModal").addEventListener("click", () => {
-  document.getElementById("modalNovoUsuario").style.display = "none";
-});
+  if (!btnNovo || !modal || !form) return;
 
-document
-  .getElementById("formNovoUsuario")
-  .addEventListener("submit", async (e) => {
+  // Abrir modal
+  btnNovo.addEventListener("click", () => {
+    modal.style.display = "block";
+  });
+
+  // Fechar modal
+  fechar.addEventListener("click", () => {
+    modal.style.display = "none";
+  });
+
+  // Fechar clicando fora
+  window.addEventListener("click", (e) => {
+    if (e.target === modal) modal.style.display = "none";
+  });
+
+  // Enviar formulário
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
     const nome = document.getElementById("novoNome").value.trim();
@@ -86,70 +98,93 @@ document
       return;
     }
 
-    // Cria o usuário no Supabase Auth
-    const { data: authData, error: authError } =
-      await supabase.auth.signUp({ email, password: senha });
+    try {
+      // Cria usuário no Auth
+      const { data: authData, error: authError } =
+        await supabaseUsuarios.auth.signUp({
+          email,
+          password: senha,
+        });
 
-    if (authError) {
-      console.error("Erro no Auth:", authError);
-      alert("Erro ao criar usuário no Auth!");
-      return;
+      if (authError) {
+        console.error("Erro no Auth:", authError);
+        alert("Erro ao criar usuário no Supabase Auth.");
+        return;
+      }
+
+      // Cadastra também na tabela 'usuarios'
+      const { error: dbError } = await supabaseUsuarios.from("usuarios").insert([
+        {
+          auth_id: authData.user.id,
+          nome,
+          email,
+          tipo: "Usuário",
+        },
+      ]);
+
+      if (dbError) {
+        console.error("Erro ao salvar no banco:", dbError);
+        alert("Usuário criado no Auth, mas erro ao salvar na tabela!");
+        return;
+      }
+
+      alert("✅ Usuário cadastrado com sucesso!");
+      modal.style.display = "none";
+      form.reset();
+      carregarUsuarios();
+    } catch (err) {
+      console.error("Erro inesperado:", err);
+      alert("Erro inesperado ao cadastrar usuário.");
     }
-
-    // Salva também na tabela 'usuarios'
-    const { error: insertError } = await supabase.from("usuarios").insert([
-      {
-        nome,
-        email,
-        tipo: "Usuário",
-        auth_id: authData.user?.id,
-      },
-    ]);
-
-    if (insertError) {
-      console.error("Erro ao salvar no banco:", insertError);
-      alert("Usuário criado no Auth, mas erro ao salvar na tabela!");
-      return;
-    }
-
-    alert("✅ Usuário cadastrado com sucesso!");
-    document.getElementById("modalNovoUsuario").style.display = "none";
-    e.target.reset();
-    carregarUsuarios();
   });
+}
 
 // ============================================================
-// ✏️ EDITAR USUÁRIO
+// ✏️ Editar usuário existente
 // ============================================================
-document
-  .getElementById("tabelaUsuarios")
-  .addEventListener("click", async (e) => {
-    if (e.target.classList.contains("btn-editar")) {
-      const id = e.target.dataset.id;
-      const { data, error } = await supabase
+function configurarEdicaoUsuario() {
+  const tabela = document.getElementById("tabelaUsuarios");
+  const modalEditar = document.getElementById("modalEditarUsuario");
+  const formEditar = document.getElementById("formEditarUsuario");
+  const fecharEditar = document.getElementById("fecharModalEditar");
+  const cancelarEditar = document.getElementById("cancelarEditar");
+
+  if (!tabela || !modalEditar || !formEditar) return;
+
+  // Abrir modal com dados
+  tabela.addEventListener("click", async (e) => {
+    const btn = e.target;
+    const id = btn.dataset.id;
+
+    if (btn.classList.contains("btn-editar")) {
+      const { data, error } = await supabaseUsuarios
         .from("usuarios")
         .select("*")
         .eq("id", id)
         .single();
 
       if (error) {
-        alert("Erro ao buscar usuário para editar!");
+        alert("Erro ao carregar usuário para edição!");
         return;
       }
 
       document.getElementById("editarId").value = data.id;
-      document.getElementById("editarNome").value = data.nome;
-      document.getElementById("editarUsuario").value = data.nome;
-      document.getElementById("editarEmail").value = data.email;
+      document.getElementById("editarNome").value = data.nome || "";
+      document.getElementById("editarUsuario").value = data.nome || "";
+      document.getElementById("editarEmail").value = data.email || "";
       document.getElementById("editarTipo").value = data.tipo || "Usuário";
 
-      document.getElementById("modalEditarUsuario").style.display = "block";
+      modalEditar.style.display = "block";
     }
 
-    if (e.target.classList.contains("btn-excluir")) {
-      const id = e.target.dataset.id;
+    // Excluir
+    if (btn.classList.contains("btn-excluir")) {
       if (confirm("Tem certeza que deseja excluir este usuário?")) {
-        const { error } = await supabase.from("usuarios").delete().eq("id", id);
+        const { error } = await supabaseUsuarios
+          .from("usuarios")
+          .delete()
+          .eq("id", id);
+
         if (error) {
           alert("Erro ao excluir usuário!");
         } else {
@@ -160,60 +195,85 @@ document
     }
   });
 
-document
-  .getElementById("formEditarUsuario")
-  .addEventListener("submit", async (e) => {
+  // Fechar modal
+  if (fecharEditar)
+    fecharEditar.addEventListener("click", () => {
+      modalEditar.style.display = "none";
+    });
+
+  if (cancelarEditar)
+    cancelarEditar.addEventListener("click", () => {
+      modalEditar.style.display = "none";
+    });
+
+  // Salvar edição
+  formEditar.addEventListener("submit", async (e) => {
     e.preventDefault();
 
     const id = document.getElementById("editarId").value;
     const nome = document.getElementById("editarNome").value.trim();
     const tipo = document.getElementById("editarTipo").value;
 
-    const { error } = await supabase
+    if (!id || !nome) {
+      alert("Preencha todos os campos obrigatórios!");
+      return;
+    }
+
+    const { error } = await supabaseUsuarios
       .from("usuarios")
       .update({ nome, tipo })
       .eq("id", id);
 
     if (error) {
-      alert("Erro ao salvar alterações!");
+      alert("Erro ao atualizar usuário!");
       return;
     }
 
     alert("✅ Usuário atualizado com sucesso!");
-    document.getElementById("modalEditarUsuario").style.display = "none";
+    modalEditar.style.display = "none";
     carregarUsuarios();
   });
-
-document.getElementById("cancelarEditar").addEventListener("click", () => {
-  document.getElementById("modalEditarUsuario").style.display = "none";
-});
+}
 
 // ============================================================
-// 🔎 BUSCAR USUÁRIOS
+// 🔍 Busca de usuários
 // ============================================================
-document.getElementById("busca").addEventListener("input", (e) => {
-  const termo = e.target.value.toLowerCase();
-  const linhas = document.querySelectorAll("#tabelaUsuarios tbody tr");
+function configurarBusca() {
+  const busca = document.getElementById("busca");
+  if (!busca) return;
 
-  linhas.forEach((linha) => {
-    const texto = linha.textContent.toLowerCase();
-    linha.style.display = texto.includes(termo) ? "" : "none";
+  busca.addEventListener("input", () => {
+    const termo = busca.value.toLowerCase();
+    const linhas = document.querySelectorAll("#tabelaUsuarios tbody tr");
+    linhas.forEach((tr) => {
+      const texto = tr.textContent.toLowerCase();
+      tr.style.display = texto.includes(termo) ? "" : "none";
+    });
   });
-});
+}
 
 // ============================================================
-// 🚪 LOGOUT
+// 🚪 Logout
 // ============================================================
-document.getElementById("logoutBtn").addEventListener("click", async () => {
-  await supabase.auth.signOut();
-  localStorage.clear();
-  window.location.href = "login.html";
-});
+function configurarLogout() {
+  const btn = document.getElementById("logoutBtn");
+  if (!btn) return;
+
+  btn.addEventListener("click", async () => {
+    await supabaseUsuarios.auth.signOut();
+    localStorage.clear();
+    window.location.href = "login.html";
+  });
+}
 
 // ============================================================
-// 🚀 INICIALIZAÇÃO
+// 🚀 Inicialização
 // ============================================================
 document.addEventListener("DOMContentLoaded", async () => {
   await verificarLogin();
   await carregarUsuarios();
+  configurarNovoUsuario();
+  configurarEdicaoUsuario();
+  configurarBusca();
+  configurarLogout();
 });
