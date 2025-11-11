@@ -1,32 +1,33 @@
-// js/pacientes.js
-const SUPABASE_URL = "https://vdvzipjygqeamnuihsiu.supabase.co";
-const SUPABASE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkdnppcGp5Z3FlYW1udWloc2l1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0MjY1MTYsImV4cCI6MjA3ODAwMjUxNn0.8Hhyuwj62L43w0MSv6JMVVxFEBWUCAOlF06h5oXKWAs";
+// ============================================================
+// 🧠 Reutiliza o Supabase global (criado em script.js)
+// ============================================================
+const supabasePacientes = supabase;
 
-const supabasePacientes = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_KEY,
-  {
-    auth: { persistSession: true, autoRefreshToken: true },
-  }
-);
-
-async function pacientesEnsureAuth() {
+// ============================================================
+// 🔐 Verifica login e mostra nome do usuário logado
+// ============================================================
+async function verificarLogin() {
   const { data, error } = await supabasePacientes.auth.getSession();
-  if (error) {
-    console.error("Erro sessão pacientes:", error);
-    return null;
-  }
-  if (!data.session) {
+  if (error || !data.session) {
     window.location.href = "login.html";
-    return null;
+    return;
   }
-  return data.session;
+
+  const nome = localStorage.getItem("usuarioNome");
+  const email = localStorage.getItem("usuarioEmail");
+  const span = document.getElementById("currentUser");
+
+  if (span) span.textContent = nome || email || data.session.user.email;
 }
 
+// ============================================================
+// 📋 Carregar pacientes da tabela
+// ============================================================
 async function carregarPacientes() {
   const tbody = document.querySelector("#tabelaPaciente tbody");
   if (!tbody) return;
+
+  tbody.innerHTML = "<tr><td colspan='7'>Carregando pacientes...</td></tr>";
 
   const { data, error } = await supabasePacientes
     .from("pacientes")
@@ -35,7 +36,8 @@ async function carregarPacientes() {
 
   if (error) {
     console.error("Erro ao carregar pacientes:", error);
-    alert("Erro ao carregar pacientes.");
+    tbody.innerHTML =
+      "<tr><td colspan='7'>❌ Erro ao carregar pacientes.</td></tr>";
     return;
   }
 
@@ -44,78 +46,51 @@ async function carregarPacientes() {
   data.forEach((p) => {
     const dataNasc = p.dataNasc
       ? new Date(p.dataNasc).toLocaleDateString("pt-BR")
-      : "";
+      : "-";
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${p.id}</td>
-      <td>${p.nome || ""}</td>
-      <td>${p.cpf || ""}</td>
-      <td>${p.telefone || ""}</td>
-      <td>${p.email || ""}</td>
+      <td>${p.nome || "-"}</td>
+      <td>${p.cpf || "-"}</td>
+      <td>${p.telefone || "-"}</td>
+      <td>${p.email || "-"}</td>
       <td>${dataNasc}</td>
       <td>
-        <button class="btn-acao btn-editar" data-id="${p.id}">Editar</button>
-        <button class="btn-acao btn-excluir" data-id="${p.id}">Excluir</button>
+        <button class="btn-editar" data-id="${p.id}">✏️</button>
+        <button class="btn-excluir" data-id="${p.id}">🗑️</button>
       </td>
     `;
     tbody.appendChild(tr);
   });
 }
 
-function filtrarTabelaPacientes() {
-  const input = document.getElementById("busca");
-  const filtro = (input.value || "").toLowerCase();
-  const linhas = document.querySelectorAll("#tabelaPaciente tbody tr");
-
-  linhas.forEach((tr) => {
-    const texto = tr.textContent.toLowerCase();
-    tr.style.display = texto.includes(filtro) ? "" : "none";
-  });
-}
-
-document.addEventListener("DOMContentLoaded", async () => {
-  const session = await pacientesEnsureAuth();
-  if (!session) return;
-
-  // Preenche nome do usuário no sidebar
-  const spanUser = document.getElementById("currentUser");
-  const nomeLocal = localStorage.getItem("usuarioNome");
-  const emailLocal = localStorage.getItem("usuarioEmail");
-  if (spanUser) {
-    spanUser.textContent =
-      (nomeLocal && nomeLocal.trim()) || emailLocal || session.user.email;
-  }
-
-  const btnLogout = document.getElementById("logoutBtn");
-  btnLogout?.addEventListener("click", async () => {
-    try {
-      await supabasePacientes.auth.signOut();
-    } catch (e) {
-      console.error("Erro ao sair:", e);
-    } finally {
-      localStorage.clear();
-      window.location.href = "login.html";
-    }
-  });
-
-  // ---------- Modal Novo Paciente ----------
-  const modalNovo = document.getElementById("novoPaciente");
+// ============================================================
+// ➕ Modal de novo paciente
+// ============================================================
+function configurarModalNovoPaciente() {
   const btnNovo = document.getElementById("bntPaciente");
-  const btnFecharNovo = document.getElementById("fecharModal");
-  const btnCancelarNovo = document.getElementById("cancelarNovo");
-  const formNovo = document.getElementById("formNovoPaciente");
+  const modal = document.getElementById("novoPaciente");
+  const fechar = document.getElementById("fecharModal");
+  const cancelar = document.getElementById("cancelarNovo");
+  const form = document.getElementById("formNovoPaciente");
 
-  btnNovo?.addEventListener("click", () => (modalNovo.style.display = "block"));
-  btnFecharNovo?.addEventListener(
-    "click",
-    () => (modalNovo.style.display = "none")
-  );
-  btnCancelarNovo?.addEventListener(
-    "click",
-    () => (modalNovo.style.display = "none")
+  if (!btnNovo || !modal || !form) return;
+
+  // Abrir modal
+  btnNovo.addEventListener("click", () => (modal.style.display = "block"));
+
+  // Fechar modal
+  [fechar, cancelar].forEach((el) =>
+    el?.addEventListener("click", () => (modal.style.display = "none"))
   );
 
-  formNovo?.addEventListener("submit", async (e) => {
+  // Fechar clicando fora
+  window.addEventListener("click", (e) => {
+    if (e.target === modal) modal.style.display = "none";
+  });
+
+  // Submeter novo paciente
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
     const nome = document.getElementById("novoNome").value.trim();
@@ -126,7 +101,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const endereco = document.getElementById("endereco").value.trim();
 
     if (!nome || !cpf || !dataNasc) {
-      alert("Nome, CPF e Data de Nascimento são obrigatórios!");
+      alert("⚠️ Nome, CPF e Data de Nascimento são obrigatórios!");
       return;
     }
 
@@ -134,99 +109,63 @@ document.addEventListener("DOMContentLoaded", async () => {
       {
         nome,
         cpf,
-        dataNasc,
         telefone,
         email,
         endereco,
+        dataNasc,
       },
     ]);
 
     if (error) {
       console.error("Erro ao cadastrar paciente:", error);
-      alert("Erro ao cadastrar paciente. Verifique o console.");
+      alert("Erro ao cadastrar paciente!");
       return;
     }
 
     alert("✅ Paciente cadastrado com sucesso!");
-    modalNovo.style.display = "none";
-    formNovo.reset();
+    modal.style.display = "none";
+    form.reset();
     carregarPacientes();
   });
+}
 
-  // ---------- Modal Editar Paciente ----------
-  const modalEditar = document.getElementById("modalEditarPaciente");
-  const btnFecharEditar = document.getElementById("fecharModalEditar");
-  const btnCancelarEditar = document.getElementById("cancelarEditar");
-  const formEditar = document.getElementById("formEditarPaciente");
-
-  btnFecharEditar?.addEventListener(
-    "click",
-    () => (modalEditar.style.display = "none")
-  );
-  btnCancelarEditar?.addEventListener(
-    "click",
-    () => (modalEditar.style.display = "none")
-  );
-
-  formEditar?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const id = document.getElementById("editarId").value;
-    const nome = document.getElementById("editarNome").value.trim();
-    const cpf = document.getElementById("editarCPF").value.trim();
-    const telefone = document.getElementById("editarTelefone").value.trim();
-    const email = document.getElementById("editarEmail").value.trim();
-    const endereco = document.getElementById("editarEndereco").value.trim();
-    const dataNasc = document.getElementById("editarDataNasc").value;
-
-    if (!id) {
-      alert("ID do paciente não encontrado.");
-      return;
-    }
-
-    const { error } = await supabasePacientes
-      .from("pacientes")
-      .update({ nome, cpf, telefone, email, endereco, dataNasc })
-      .eq("id", id);
-
-    if (error) {
-      console.error("Erro ao atualizar paciente:", error);
-      alert("Erro ao atualizar paciente.");
-      return;
-    }
-
-    alert("✅ Paciente atualizado com sucesso!");
-    modalEditar.style.display = "none";
-    carregarPacientes();
-  });
-
-  // Tabela - editar/excluir
+// ============================================================
+// ✏️ Editar paciente existente
+// ============================================================
+function configurarEdicaoPaciente() {
   const tabela = document.getElementById("tabelaPaciente");
-  tabela?.addEventListener("click", async (e) => {
-    const target = e.target;
-    if (!(target instanceof HTMLElement)) return;
+  const modalEditar = document.getElementById("modalEditarPaciente");
+  const formEditar = document.getElementById("formEditarPaciente");
+  const fecharEditar = document.getElementById("fecharModalEditar");
+  const cancelarEditar = document.getElementById("cancelarEditar");
 
-    const id = target.getAttribute("data-id");
+  if (!tabela || !modalEditar || !formEditar) return;
+
+  // Abrir modal de edição
+  tabela.addEventListener("click", async (e) => {
+    const target = e.target;
+    const id = target.dataset.id;
     if (!id) return;
 
+    // Excluir paciente
     if (target.classList.contains("btn-excluir")) {
-      if (!confirm("Tem certeza que deseja excluir este paciente?")) return;
+      if (confirm("Tem certeza que deseja excluir este paciente?")) {
+        const { error } = await supabasePacientes
+          .from("pacientes")
+          .delete()
+          .eq("id", id);
 
-      const { error } = await supabasePacientes
-        .from("pacientes")
-        .delete()
-        .eq("id", id);
+        if (error) {
+          alert("Erro ao excluir paciente!");
+          return;
+        }
 
-      if (error) {
-        console.error("Erro ao excluir paciente:", error);
-        alert("Erro ao excluir paciente.");
-        return;
+        alert("🗑️ Paciente excluído com sucesso!");
+        carregarPacientes();
       }
-
-      alert("Paciente excluído com sucesso.");
-      carregarPacientes();
     }
 
+    // Editar paciente
     if (target.classList.contains("btn-editar")) {
       const { data, error } = await supabasePacientes
         .from("pacientes")
@@ -235,8 +174,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         .single();
 
       if (error) {
-        console.error("Erro ao carregar paciente:", error);
-        alert("Erro ao carregar dados do paciente.");
+        alert("Erro ao carregar dados do paciente!");
         return;
       }
 
@@ -253,10 +191,84 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // Busca
-  const inputBusca = document.getElementById("busca");
-  inputBusca?.addEventListener("input", filtrarTabelaPacientes);
+  // Fechar modal
+  [fecharEditar, cancelarEditar].forEach((el) =>
+    el?.addEventListener("click", () => (modalEditar.style.display = "none"))
+  );
 
-  // Carregar lista inicial
-  carregarPacientes();
+  // Salvar edição
+  formEditar.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const id = document.getElementById("editarId").value;
+    const nome = document.getElementById("editarNome").value.trim();
+    const cpf = document.getElementById("editarCPF").value.trim();
+    const telefone = document.getElementById("editarTelefone").value.trim();
+    const email = document.getElementById("editarEmail").value.trim();
+    const endereco = document.getElementById("editarEndereco").value.trim();
+    const dataNasc = document.getElementById("editarDataNasc").value;
+
+    if (!id) {
+      alert("ID do paciente não encontrado!");
+      return;
+    }
+
+    const { error } = await supabasePacientes
+      .from("pacientes")
+      .update({ nome, cpf, telefone, email, endereco, dataNasc })
+      .eq("id", id);
+
+    if (error) {
+      console.error("Erro ao atualizar paciente:", error);
+      alert("Erro ao atualizar paciente!");
+      return;
+    }
+
+    alert("✅ Paciente atualizado com sucesso!");
+    modalEditar.style.display = "none";
+    carregarPacientes();
+  });
+}
+
+// ============================================================
+// 🔎 Buscar paciente
+// ============================================================
+function configurarBusca() {
+  const busca = document.getElementById("busca");
+  if (!busca) return;
+
+  busca.addEventListener("input", () => {
+    const termo = busca.value.toLowerCase();
+    const linhas = document.querySelectorAll("#tabelaPaciente tbody tr");
+    linhas.forEach((tr) => {
+      const texto = tr.textContent.toLowerCase();
+      tr.style.display = texto.includes(termo) ? "" : "none";
+    });
+  });
+}
+
+// ============================================================
+// 🚪 Logout
+// ============================================================
+function configurarLogout() {
+  const btn = document.getElementById("logoutBtn");
+  if (!btn) return;
+
+  btn.addEventListener("click", async () => {
+    await supabasePacientes.auth.signOut();
+    localStorage.clear();
+    window.location.href = "login.html";
+  });
+}
+
+// ============================================================
+// 🚀 Inicialização
+// ============================================================
+document.addEventListener("DOMContentLoaded", async () => {
+  await verificarLogin();
+  await carregarPacientes();
+  configurarModalNovoPaciente();
+  configurarEdicaoPaciente();
+  configurarBusca();
+  configurarLogout();
 });
