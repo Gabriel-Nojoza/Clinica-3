@@ -1,110 +1,147 @@
-// ==========================================
-// LOGIN + EXIBIÇÃO DE USUÁRIO LOGADO (SUPABASE AUTH + TABELA USUÁRIOS)
-// ==========================================
-
+// js/script.js
+// ==============================================
+// 🔧 Configuração do Supabase
+// ==============================================
 const SUPABASE_URL = "https://vdvzipjygqeamnuihsiu.supabase.co";
 const SUPABASE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkdnppcGp5Z3FlYW1udWloc2l1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0MjY1MTYsImV4cCI6MjA3ODAwMjUxNn0.8Hhyuwj62L43w0MSv6JMVVxFEBWUCAOlF06h5oXKWAs";
+
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true },
 });
 
-// ==========================================
-// LOGIN DIRETO COM SUPABASE
-// ==========================================
-const formLogin = document.querySelector(".form-login");
-if (formLogin) {
-  formLogin.addEventListener("submit", async (e) => {
-    e.preventDefault();
+// ==============================================
+// 🔹 Helpers
+// ==============================================
+function isLoginPage() {
+  return window.location.pathname.endsWith("login.html");
+}
 
-    const email = document.getElementById("email").value.trim();
-    const senha = document.getElementById("senha").value.trim();
+async function getSession() {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) {
+    console.error("Erro ao obter sessão:", error);
+    return null;
+  }
+  return data.session;
+}
 
-    if (!email || !senha) {
-      alert("Preencha todos os campos!");
-      return;
+async function ensureAuthenticated() {
+  const session = await getSession();
+  if (!session) {
+    // sem sessão: volta pro login
+    window.location.href = "login.html";
+    return null;
+  }
+  return session;
+}
+
+function preencherUsuarioHeader(session) {
+  const span = document.getElementById("currentUser");
+  const nomeLocal = localStorage.getItem("usuarioNome");
+  const emailLocal = localStorage.getItem("usuarioEmail");
+  const valor =
+    nomeLocal && nomeLocal.trim()
+      ? nomeLocal
+      : emailLocal || (session && session.user && session.user.email) || "";
+
+  if (span) span.textContent = valor;
+}
+
+function configurarLogout() {
+  const btn = document.getElementById("logoutBtn");
+  if (!btn) return;
+
+  btn.addEventListener("click", async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error("Erro ao deslogar:", e);
+    } finally {
+      localStorage.clear();
+      window.location.href = "login.html";
     }
-
-    // 🔹 Login via Supabase Auth
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password: senha,
-    });
-
-    if (error) {
-      alert("E-mail ou senha incorretos!");
-      console.error("Erro de login:", error);
-      return;
-    }
-
-    const user = data.user;
-    localStorage.setItem("usuarioId", user.id);
-    localStorage.setItem("usuarioEmail", user.email);
-
-    // Busca dados adicionais da tabela usuarios
-    const { data: usuarioInfo } = await supabase
-      .from("usuarios")
-      .select("nome, tipo")
-      .eq("auth_id", user.id)
-      .single();
-
-    if (usuarioInfo) {
-      localStorage.setItem("usuarioNome", usuarioInfo.nome || user.email);
-      localStorage.setItem("usuarioTipo", usuarioInfo.tipo || "Usuário");
-    } else {
-      localStorage.setItem("usuarioNome", user.email);
-      localStorage.setItem("usuarioTipo", "Usuário");
-    }
-
-    alert(`Bem-vindo, ${localStorage.getItem("usuarioNome")}!`);
-    window.location.href = "menu.html";
   });
 }
 
-// ==========================================
-// VERIFICA LOGIN AUTOMÁTICO
-// ==========================================
+// ==============================================
+// 🚀 Inicialização
+// ==============================================
 document.addEventListener("DOMContentLoaded", async () => {
-  const { data } = await supabase.auth.getUser();
-  const user = data.user;
+  if (isLoginPage()) {
+    // ==========================
+    // PÁGINA DE LOGIN
+    // ==========================
+    const form = document.querySelector(".form-login");
+    if (!form) return;
 
-  // Se o usuário estiver deslogado → redireciona pro login
-  if (!user && !window.location.href.includes("login.html")) {
-    window.location.href = "login.html";
-    return;
-  }
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-  // Se o usuário estiver logado → mostra nome e tipo nas páginas
-  if (user) {
-    const nomeEl = document.getElementById("currentUser");
-    const tipoEl = document.querySelector(".user-role");
+      const email = document.getElementById("email").value.trim();
+      const senha = document.getElementById("senha").value.trim();
 
-    let nome = localStorage.getItem("usuarioNome");
-    let tipo = localStorage.getItem("usuarioTipo");
+      if (!email || !senha) {
+        alert("Preencha e-mail e senha!");
+        return;
+      }
 
-    if (!nome) {
-      const { data: usuarioInfo } = await supabase
-        .from("usuarios")
-        .select("nome, tipo")
-        .eq("auth_id", user.id)
-        .single();
-      nome = usuarioInfo?.nome || user.email;
-      tipo = usuarioInfo?.tipo || "Usuário";
-    }
+      try
+      {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password: senha,
+        });
 
-    if (nomeEl) nomeEl.textContent = nome;
-    if (tipoEl) tipoEl.textContent = tipo;
+        if (error) {
+          console.error("Erro de login:", error);
+          alert("E-mail ou senha incorretos.");
+          return;
+        }
+
+        const user = data.user;
+        if (!user) {
+          alert("Erro ao obter usuário autenticado.");
+          return;
+        }
+
+        // Guarda infos básicas no localStorage
+        localStorage.setItem("authUserId", user.id);
+        localStorage.setItem("usuarioEmail", user.email || email);
+
+        // Busca o registro correspondente na tabela `usuarios`
+        const { data: usuarioRow, error: usuarioError } = await supabase
+          .from("usuarios")
+          .select("*")
+          .eq("auth_id", user.id)
+          .single();
+
+        if (usuarioError) {
+          console.warn(
+            "Login funcionou, mas não foi possível carregar dados da tabela usuarios:",
+            usuarioError
+          );
+        } else if (usuarioRow) {
+          localStorage.setItem("usuarioId", usuarioRow.id);
+          localStorage.setItem("usuarioNome", usuarioRow.nome || "");
+          localStorage.setItem("usuarioTipo", usuarioRow.tipo || "");
+        }
+
+        alert("✅ Login realizado com sucesso!");
+        window.location.href = "menu.html";
+      } catch (err) {
+        console.error("Erro inesperado no login:", err);
+        alert("Erro inesperado ao fazer login. Verifique o console.");
+      }
+    });
+  } else {
+    // ==========================
+    // PÁGINAS INTERNAS (protegidas)
+    // ==========================
+    const session = await ensureAuthenticated();
+    if (!session) return;
+
+    preencherUsuarioHeader(session);
+    configurarLogout();
   }
 });
-
-// ==========================================
-// LOGOUT PADRÃO
-// ==========================================
-const btnLogout = document.getElementById("logoutBtn");
-if (btnLogout) {
-  btnLogout.addEventListener("click", async () => {
-    await supabase.auth.signOut();
-    localStorage.clear();
-    window.location.href = "login.html";
-  });
-}
